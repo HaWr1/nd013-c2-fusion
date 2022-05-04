@@ -14,6 +14,7 @@
 import cv2
 import numpy as np
 import torch
+import zlib
 
 # add project directory to python path to enable relative imports
 import os
@@ -55,25 +56,69 @@ def show_pcl(pcl):
 
 
 # visualize range image
-def show_range_image(frame, lidar_name):
+def show_range_image(frame, lidar_name, crop90=True):
+    """Returns the stacked range and intensity image from the frame and lidar.
+
+    Args:
+        frame (simple_waymo_open_dataset_reader.dataset_pb2.Frame): frame from waymo dataset
+        lidar_name (int): ID of the lidar
+        crop90 (bool, optional): Crop output to +/-90° around x-axis. Defaults to True.
+
+    Returns:
+        numpy.ndarray: Stacked range and intensity image
+    """
 
     ####### ID_S1_EX1 START #######
     #######
     print("student task ID_S1_EX1")
 
     # step 1 : extract lidar data and range image for the roof-mounted lidar
+    lidar = [obj for obj in frame.lasers if obj.name == lidar_name][0]
+
+    if len(lidar.ri_return1.range_image_compressed) > 0:
+        range_image = dataset_pb2.MatrixFloat()
+        range_image.ParseFromString(
+            zlib.decompress(lidar.ri_return1.range_image_compressed)
+        )
+        range_image = np.array(range_image.data).reshape(range_image.shape.dims)
 
     # step 2 : extract the range and the intensity channel from the range image
+    range = range_image[:, :, 0]
+    intensity = range_image[:, :, 1]
 
     # step 3 : set values <0 to zero
+    range = np.clip(range, 0, None)
+    intensity = np.clip(intensity, 0, None)
 
-    # step 4 : map the range channel onto an 8-bit scale and make sure that the full range of values is appropriately considered
+    # step 4 : map the range channel onto an 8-bit scale and make sure that the full
+    # range of values is appropriately considered
+    range = (range / (np.amax(range) - np.amin(range)) * 255).astype(np.uint8)
 
-    # step 5 : map the intensity channel onto an 8-bit scale and normalize with the difference between the 1- and 99-percentile to mitigate the influence of outliers
+    # step 5 : map the intensity channel onto an 8-bit scale and normalize with the
+    # difference between the 1- and 99-percentile to mitigate the influence of outliers
+    intensity = np.clip(
+        intensity, a_min=np.percentile(intensity, 1), a_max=np.percentile(intensity, 99)
+    )
 
-    # step 6 : stack the range and intensity image vertically using np.vstack and convert the result to an unsigned 8-bit integer
+    intensity = (
+        np.floor(
+            intensity
+            / (np.percentile(intensity, 99) - np.percentile(intensity, 1))
+            * 255
+        )
+    ).astype(np.uint8)
 
-    img_range_intensity = []  # remove after implementing all steps
+    # step 6 : stack the range and intensity image vertically using np.vstack and convert
+    # the result to an unsigned 8-bit integer
+    img_range_intensity = np.vstack([range, intensity])
+
+    # step 7 : crop to +/-90° around forward facing x-axis
+    if crop90:
+        deg90 = int(img_range_intensity.shape[1] / 4)
+        center = int(img_range_intensity.shape[1] / 2)
+        img_range_intensity = img_range_intensity[:, center - deg90 : center + deg90]
+
+    # img_range_intensity = []  # remove after implementing all steps
     #######
     ####### ID_S1_EX1 END #######
 
