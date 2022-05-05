@@ -212,30 +212,29 @@ def bev_from_pcl(lidar_pcl, configs, vis=False):
     _, indices, counts = np.unique(
         lidar_pcl_copy[:, 0:2], axis=0, return_index=True, return_counts=True
     )
-    lidar_pcl_int = lidar_pcl_copy[indices]
+    lidar_pcl_top = lidar_pcl_copy[indices]
 
     ## step 4 : assign the intensity value of each unique entry in lidar_top_pcl to the intensity map
     ##          make sure that the intensity is scaled in such a way that objects of interest
     ##          (e.g. vehicles) are clearly visible
     ##          also, make sure that the influence of outliers is mitigated by normalizing intensity
     ##          on the difference between the max. and min. value within the point cloud
-    lidar_pcl_int[:, 3] = np.clip(
-        lidar_pcl_int[:, 3],
+    lidar_pcl_top[:, 3] = np.clip(
+        lidar_pcl_top[:, 3],
         a_min=0,
-        a_max=np.percentile(lidar_pcl_int[:, 3], 95),
-    )  # clip intensity to positive values and  95% percentile to remove outliers
+        a_max=np.percentile(lidar_pcl_top[:, 3], 99),
+    )  # clip intensity to positive values and  99% percentile to remove outliers
 
     intensity_map[
-        np.int_(lidar_pcl_int[:, 0]), np.int_(lidar_pcl_int[:, 1])
-    ] = lidar_pcl_int[:, 3] / (
-        np.amax(lidar_pcl_int[:, 3]) - np.amin(lidar_pcl_int[:, 3])
+        np.int_(lidar_pcl_top[:, 0]), np.int_(lidar_pcl_top[:, 1])
+    ] = lidar_pcl_top[:, 3] / (
+        np.amax(lidar_pcl_top[:, 3]) - np.amin(lidar_pcl_top[:, 3])
     )  # normalize to span between max and min value to increase contrast
 
     ## step 5 : temporarily visualize the intensity map using OpenCV to make sure that vehicles
     ##          separate well from the background
     if vis:
-        img_intensity = intensity_map * 256
-        img_intensity = img_intensity.astype(np.uint8)
+        img_intensity = (intensity_map * 255).astype(np.uint8)
         while 1:
             cv2.imshow("img_intensity", img_intensity)
             if cv2.waitKey(10) & 0xFF == 27:  # break on ESC
@@ -251,31 +250,51 @@ def bev_from_pcl(lidar_pcl, configs, vis=False):
     print("student task ID_S2_EX3")
 
     ## step 1 : create a numpy array filled with zeros which has the same dimensions as the BEV map
+    height_map = np.zeros((configs.bev_height + 1, configs.bev_width + 1))
 
     ## step 2 : assign the height value of each unique entry in lidar_top_pcl to the height map
     ##          make sure that each entry is normalized on the difference between the upper and lower height defined in the config file
     ##          use the lidar_pcl_top data structure from the previous task to access the pixels of the height_map
+    height_map[
+        np.int_(lidar_pcl_top[:, 0]), np.int_(lidar_pcl_top[:, 1])
+    ] = lidar_pcl_top[:, 2] / float(np.abs(configs.lim_z[1] - configs.lim_z[0]))
 
     ## step 3 : temporarily visualize the intensity map using OpenCV to make sure that vehicles separate well from the background
+    if vis:
+        img_height = (height_map * 255).astype(np.uint8)
+        while 1:
+            cv2.imshow("img_height", img_height)
+            if cv2.waitKey(10) & 0xFF == 27:  # break on ESC
+                break
+        cv2.destroyAllWindows()
 
     #######
     ####### ID_S2_EX3 END #######
 
-    # TODO remove after implementing all of the above steps
-    lidar_pcl_cpy = []
-    lidar_pcl_top = []
-    height_map = []
-    intensity_map = []
+    # # TODO remove after implementing all of the above steps
+    # lidar_pcl_cpy = []
+    # lidar_pcl_top = []
+    # height_map = []
+    # intensity_map = []
 
     # Compute density layer of the BEV map
     density_map = np.zeros((configs.bev_height + 1, configs.bev_width + 1))
     _, _, counts = np.unique(
-        lidar_pcl_cpy[:, 0:2], axis=0, return_index=True, return_counts=True
+        lidar_pcl_copy[:, 0:2], axis=0, return_index=True, return_counts=True
     )
     normalizedCounts = np.minimum(1.0, np.log(counts + 1) / np.log(64))
     density_map[
         np.int_(lidar_pcl_top[:, 0]), np.int_(lidar_pcl_top[:, 1])
     ] = normalizedCounts
+
+    # temporarily visualize the density map using OpenCV
+    if vis:
+        img_density = (density_map * 255).astype(np.uint8)
+        while 1:
+            cv2.imshow("img_density", img_density)
+            if cv2.waitKey(10) & 0xFF == 27:  # break on ESC
+                break
+        cv2.destroyAllWindows()
 
     # assemble 3-channel bev-map from individual maps
     bev_map = np.zeros((3, configs.bev_height, configs.bev_width))
