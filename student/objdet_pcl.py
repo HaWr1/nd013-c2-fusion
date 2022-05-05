@@ -167,12 +167,21 @@ def bev_from_pcl(lidar_pcl, configs):
     print("student task ID_S2_EX1")
 
     ## step 1 :  compute bev-map discretization by dividing x-range by the bev-image height (see configs)
+    pixel_per_meter = 1 / ((configs.lim_x[1] - configs.lim_x[0]) / configs.bev_height)
 
-    ## step 2 : create a copy of the lidar pcl and transform all metrix x-coordinates into bev-image coordinates
+    ## step 2 : create a copy of the lidar pcl and transform all metric x-coordinates into bev-image coordinates
+    lidar_pcl_copy = np.copy(lidar_pcl)
+    lidar_pcl_copy[:, 0] = (np.floor(lidar_pcl_copy[:, 0] * pixel_per_meter)).astype(
+        int
+    )
 
     # step 3 : perform the same operation as in step 2 for the y-coordinates but make sure that no negative bev-coordinates occur
+    lidar_pcl_copy[:, 1] = (
+        np.floor(lidar_pcl_copy[:, 1] * pixel_per_meter + (configs.bev_width + 1) / 2)
+    ).astype(int)
 
     # step 4 : visualize point-cloud using the function show_pcl from a previous task
+    show_pcl(lidar_pcl_copy)
 
     #######
     ####### ID_S2_EX1 END #######
