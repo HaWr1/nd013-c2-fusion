@@ -73,7 +73,35 @@ def load_configs_model(model_name="darknet", configs=None):
         #######
         print("student task ID_S3_EX1-3")
 
-        #######
+        # configure file paths
+        configs.model_path = os.path.join(
+            parent_path, "tools", "objdet_models", "resnet"
+        )
+        configs.pretrained_filename = os.path.join(
+            configs.model_path,
+            "pretrained",
+            "fpn_resnet_18_epoch_300.pth",
+        )
+
+        # configure model
+        configs.arch = "fpn_resnet_18"
+
+        configs.imagenet_pretrained = False
+        configs.head_conv = 64
+
+        configs.num_classes = 3
+        configs.num_center_offset = 2
+        configs.num_z = 1
+        configs.num_dim = 3
+        configs.num_direction = 2
+        configs.heads = {
+            "hm_cen": configs.num_classes,
+            "cen_offset": configs.num_center_offset,
+            "direction": configs.num_direction,
+            "z_coor": configs.num_z,
+            "dim": configs.num_dim,
+        }
+
         ####### ID_S3_EX1-3 END #######
 
     else:
@@ -137,6 +165,13 @@ def create_model(configs):
         ####### ID_S3_EX1-4 START #######
         #######
         print("student task ID_S3_EX1-4")
+
+        model = fpn_resnet.get_pose_net(
+            num_layers=int(configs.arch.split("_")[-1]),
+            heads=configs.heads,
+            head_conv=configs.head_conv,
+            imagenet_pretrained=configs.imagenet_pretrained,
+        )
 
         #######
         ####### ID_S3_EX1-4 END #######
