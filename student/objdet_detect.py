@@ -149,6 +149,9 @@ def load_configs(model_name="fpn_resnet", configs=None):
         [255, 0, 0],
     ]  # 'Pedestrian': 0, 'Car': 1, 'Cyclist': 2
 
+    # evaluation parameters
+    configs.min_iou = 0.5
+
     return configs
 
 
