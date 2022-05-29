@@ -135,7 +135,10 @@ class Trackmanagement:
         # decrease score for unassigned tracks
         for i in unassigned_tracks:
             track = self.track_list[i]
-            track.score -= 1.0 / params.window
+            # check visibility
+            if meas_list:  # if not empty
+                if meas_list[0].sensor.in_fov(track.x):
+                    track.score -= 1.0 / params.window
 
         # delete old tracks
         for track in self.track_list:
